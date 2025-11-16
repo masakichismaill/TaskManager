@@ -1,5 +1,60 @@
 import tkinter as tk
 
+# タスクを保存する箱。各タスクは{"title":...,"due":...,"memo":...}という辞書でもつ
+tasks = []
+
+
+def add_task():
+    """右側の入力内容からタスクを追加し、一覧に表示する"""
+    title = title_entry.get().strip()
+    due = due_entry.get().strip()
+    memo = memo_text.get("1.0", tk.END).strip()
+
+    if not title:
+        print("タイトルを入力してください。")
+        return
+
+    # 1つのタスクを辞書で表現
+    task = {
+        "title": title,
+        "due": due,
+        "memo": memo,
+    }
+
+    # 内部のリストに追加
+    tasks.append(task)
+
+    # Listbox にタイトルを表示
+    task_listbox.insert(tk.END, title)
+
+    # 入力欄をクリア（好みで変えてOK）
+    title_entry.delete(0, tk.END)
+    due_entry.delete(0, tk.END)
+    memo_text.delete("1.0", tk.END)
+
+
+def on_select(event):
+    """タスク一覧で選ばれたものを、右側の入力欄に表示する"""
+    if not tasks:
+        return
+
+    selection = task_listbox.curselection()
+    if not selection:
+        return
+
+    index = selection[0]  # 何番目か（0,1,2,...）
+    task = tasks[index]  # 対応するタスク辞書を取り出す
+
+    # いったん全部クリア
+    title_entry.delete(0, tk.END)
+    due_entry.delete(0, tk.END)
+    memo_text.delete("1.0", tk.END)
+
+    # 選択中タスクの内容をセット
+    title_entry.insert(0, task["title"])
+    due_entry.insert(0, task["due"])
+    memo_text.insert("1.0", task["memo"])
+
 
 # メインウィンドウ
 root = tk.Tk()
@@ -16,6 +71,7 @@ list_label = tk.Label(left_frame, text="タスク一覧", font=("メイリオ", 
 list_label.pack(anchor="w")
 
 task_listbox = tk.Listbox(left_frame, width=30, height=20)
+task_listbox.bind("<<ListboxSelect>>", on_select)
 task_listbox.pack(side="left", fill="y")
 
 scrollbar = tk.Scrollbar(left_frame, orient="vertical")
@@ -66,5 +122,6 @@ add_button.pack(side="left", padx=5)
 update_button.pack(side="left", padx=5)
 delete_button.pack(side="left", padx=5)
 
+add_button.config(command=add_task)
 # メインループ
 root.mainloop()
