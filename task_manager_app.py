@@ -1,6 +1,10 @@
 import tkinter as tk
+import json
+import os
 
-# タスクを保存する箱。各タスクは{"title":...,"due":...,"memo":...}という辞書でもつ
+
+# タスクを保存する箱。各タスクは{"title":...,"due":...,"memo":...}という辞書でもつ。
+# 呼び出す時にtasks["title"]など意味のある名前で呼べる。
 tasks = []
 
 
@@ -24,24 +28,25 @@ def add_task():
     # 内部のリストに追加
     tasks.append(task)
 
-    # Listbox にタイトルを表示
+    # Listbox にタイトルを表示.tk.ENDは今あるアイテムの最後に入れる。
     task_listbox.insert(tk.END, title)
 
     # 入力欄をクリア（好みで変えてOK）
     title_entry.delete(0, tk.END)
     due_entry.delete(0, tk.END)
     memo_text.delete("1.0", tk.END)
+    save_tasks_to_file()
 
 
 def on_select(event):
     """タスク一覧で選ばれたものを、右側の入力欄に表示する"""
     if not tasks:
         return
-
+    # curselection:現在の選択。今選択されている行の番号たち
     selection = task_listbox.curselection()
     if not selection:
         return
-
+    # Listboxで上から何番目を選んだか->同じ番号のtasks[index]を取り出す
     index = selection[0]  # 何番目か（0,1,2,...）
     task = tasks[index]  # 対応するタスク辞書を取り出す
 
@@ -51,9 +56,30 @@ def on_select(event):
     memo_text.delete("1.0", tk.END)
 
     # 選択中タスクの内容をセット
+    # task_listbox.insert(位置,追加するリスト)指定した位置に、新しい行を差し込む
     title_entry.insert(0, task["title"])
     due_entry.insert(0, task["due"])
     memo_text.insert("1.0", task["memo"])
+
+
+# 保存関数
+def save_tasks_to_file():
+    with open("tasks.json", "w", encoding="utf-8") as f:
+        json.dump(tasks, f, ensure_ascii=False, indent=2)
+
+
+# 読み込み関数
+def load_tasks_from_file():
+    if not os.path.exists("tasks.json"):
+        return
+    global tasks
+    with open("tasks.json", "r", encoding="utf-8") as f:
+        tasks = json.load(f)
+
+    # 画面(Listbox)にも反映
+    task_listbox.delete(0, tk.END)
+    for task in tasks:
+        task_listbox.insert(tk.END, task["title"])
 
 
 # メインウィンドウ
@@ -109,7 +135,7 @@ memo_text = tk.Text(right_frame, wrap="word")
 memo_text.pack(fill="both", expand=True)
 
 # =========================
-# ボタンエリア（まだ中身なし）
+# ボタンエリア
 # =========================
 button_frame = tk.Frame(right_frame, pady=10)
 button_frame.pack(fill="x")
@@ -123,5 +149,7 @@ update_button.pack(side="left", padx=5)
 delete_button.pack(side="left", padx=5)
 
 add_button.config(command=add_task)
+
+load_tasks_from_file()
 # メインループ
 root.mainloop()
