@@ -1,37 +1,5 @@
 import tkinter as tk
 
-tasks = []
-
-
-# 関数
-def add_task():
-    """右側の入力内容からタスクを追加し、一覧に表示する"""
-    title = title_entry.get().strip()
-    due = due_entry.get().strip()
-    memo = memo_text.get("1.0", tk.END).strip()
-
-    if not title:
-        print("タイトルを入力してください。")
-        return
-
-    # 1つのタスクを辞書で表現
-    task = {
-        "title": title,
-        "due": due,
-        "memo": memo,
-    }
-
-    # 内部のリストに追加
-    tasks.append(task)
-
-    # Listbox にタイトルを表示
-    task_listbox.insert(tk.END, title)
-
-    # 入力欄をクリア（好みで変えてOK）
-    title_entry.delete(0, tk.END)
-    due_entry.delete(0, tk.END)
-    memo_text.delete("1.0", tk.END)
-
 
 # メインウィンドウ
 root = tk.Tk()
