@@ -7,6 +7,10 @@ import os
 # 呼び出す時にtasks["title"]など意味のある名前で呼べる。
 tasks = []
 
+# =========================
+# 関数エリア
+# =========================
+
 
 def add_task():
     """右側の入力内容からタスクを追加し、一覧に表示する"""
@@ -82,7 +86,68 @@ def load_tasks_from_file():
         task_listbox.insert(tk.END, task["title"])
 
 
+# 更新用関数
+def update_task():
+    """選択中のタスクを、右側の入力内容で上書きする"""
+    selection = task_listbox.curselection()
+    if not selection:
+        print("更新するタスクを選んでください。")
+        return
+
+    index = selection[0]
+
+    title = title_entry.get().strip()
+    due = due_entry.get().strip()
+    memo = memo_text.get("1.0", tk.END).strip()
+
+    if not title:
+        print("タイトルを入力してください。")
+        return
+
+    # 内部データを上書き
+    tasks[index] = {
+        "title": title,
+        "due": due,
+        "memo": memo,
+    }
+
+    # Listbox の表示も更新
+    task_listbox.delete(index)
+    task_listbox.insert(index, title)
+    task_listbox.selection_set(index)  # 選択状態を保つ
+
+    # ファイルに保存
+    save_tasks_to_file()
+
+
+def delete_task():
+    """選択中のタスクを削除する"""
+    selection = task_listbox.curselection()
+    if not selection:
+        print("削除するタスクを選んでください。")
+        return
+
+    index = selection[0]
+
+    # Listbox から削除
+    task_listbox.delete(index)
+
+    # 内部データからも削除
+    tasks.pop(index)
+
+    # ファイルに保存
+    save_tasks_to_file()
+
+    # 右側の入力欄をクリア
+    title_entry.delete(0, tk.END)
+    due_entry.delete(0, tk.END)
+    memo_text.delete("1.0", tk.END)
+
+
+# =========================
 # メインウィンドウ
+# =========================
+
 root = tk.Tk()
 root.title("タスク管理アプリ")
 root.geometry("900x600")  # 幅 x 高さ
@@ -149,6 +214,8 @@ update_button.pack(side="left", padx=5)
 delete_button.pack(side="left", padx=5)
 
 add_button.config(command=add_task)
+update_button.config(command=update_task)
+delete_button.config(command=delete_task)
 
 load_tasks_from_file()
 # メインループ
