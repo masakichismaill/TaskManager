@@ -1,6 +1,7 @@
 import tkinter as tk
 import json
 import os
+from datetime import datetime
 
 # タスクを保存する箱。各タスクは{"title":...,"due":...,"memo":...,"done":...}という辞書で持つ
 tasks = []
@@ -13,6 +14,11 @@ FILTER_DONE = "done"  # 完了のみ
 # 現在のフィルタモード
 current_filter = FILTER_ALL
 
+# ソート種別
+SORT_NONE = "none"
+SORT_DUE_ASC = "due_asc"
+
+current_sort = SORT_NONE
 # 「Listboxの何行目か」→「tasksの何番目か」を対応させるためのリスト
 display_indices = []
 
@@ -24,30 +30,59 @@ def get_display_title(task: dict) -> str:
     return mark + task["title"]
 
 
+def get_due_datetime(task):
+    """task['due'] を datetime に変換する。失敗したら最大値を返す。"""
+    due_str = task.get("due", "").strip()
+    if not due_str:
+        return datetime.max  # 期日なし → 一番後ろに
+    try:
+        # 形式：YYYY-MM-DD を想定
+        return datetime.strptime(due_str, "%Y-%m-%d")
+    except ValueError:
+        # 変な書式なら、とりあえず後ろに回す
+        return datetime.max
+
+
 def refresh_task_list():
-    """current_filter に応じて Listbox を描き直す"""
+    """current_filter と current_sort に応じて Listbox を描き直す"""
     global display_indices
 
     task_listbox.delete(0, tk.END)
-    display_indices = []  # ここで毎回作り直す
+    display_indices = []
 
+    # まずフィルタに合うタスクの index リストを作る
+    filtered_indices = []
     for i, task in enumerate(tasks):
         done = task.get("done", False)
 
-        # フィルタ条件
         if current_filter == FILTER_ACTIVE and done:
-            continue  # 完了は表示しない
+            continue
         if current_filter == FILTER_DONE and not done:
-            continue  # 未完了は表示しない
+            continue
 
-        task_listbox.insert(tk.END, get_display_title(task))
-        display_indices.append(i)  # Listboxのこの行は tasks[i] に対応する
+        filtered_indices.append(i)
+
+    # ソートモードに応じて並び替え
+    if current_sort == SORT_DUE_ASC:
+        filtered_indices.sort(key=lambda idx: get_due_datetime(tasks[idx]))
+
+    # 並び替え結果をもとに Listbox と display_indices を作る
+    for idx in filtered_indices:
+        task_listbox.insert(tk.END, get_display_title(tasks[idx]))
+        display_indices.append(idx)
 
 
 def set_filter(mode):
     """フィルタモードを変えて一覧を描き直す"""
     global current_filter
     current_filter = mode
+    refresh_task_list()
+
+
+def set_sort(mode):
+    """ソートモードを変えて一覧を描き直す"""
+    global current_sort
+    current_sort = mode
     refresh_task_list()
 
 
@@ -257,6 +292,20 @@ all_button.pack(side="left", padx=2)
 active_button.pack(side="left", padx=2)
 done_button.pack(side="left", padx=2)
 
+sort_button = tk.Button(
+    left_frame,
+    text="期日が近い順",
+    width=18,
+    command=lambda: set_sort(SORT_DUE_ASC),
+)
+sort_clear_button = tk.Button(
+    left_frame,
+    text="並び替え解除",
+    width=18,
+    command=lambda: set_sort(SORT_NONE),
+)
+sort_button.pack(anchor="w", pady=(0, 2))
+sort_clear_button.pack(anchor="w", pady=(0, 8))
 task_listbox = tk.Listbox(left_frame, width=30, height=20)
 task_listbox.bind("<<ListboxSelect>>", on_select)
 task_listbox.pack(side="left", fill="y")
