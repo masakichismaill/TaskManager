@@ -7,9 +7,15 @@ import os
 # 呼び出す時にtasks["title"]など意味のある名前で呼べる。
 tasks = []
 
+
 # =========================
 # 関数エリア
 # =========================
+def get_display_title(task: dict) -> str:
+    """Listboxに表示するためのタイトル文字列を作る"""
+    done = task.get("done", False)  # "done" がなければ False 扱い
+    mark = "[✔] " if done else "[ ] "
+    return mark + task["title"]
 
 
 def add_task():
@@ -27,6 +33,7 @@ def add_task():
         "title": title,
         "due": due,
         "memo": memo,
+        "done": False,
     }
 
     # 内部のリストに追加
@@ -40,6 +47,7 @@ def add_task():
     due_entry.delete(0, tk.END)
     memo_text.delete("1.0", tk.END)
     save_tasks_to_file()
+    update_status_label()
 
 
 def on_select(event):
@@ -72,6 +80,13 @@ def save_tasks_to_file():
         json.dump(tasks, f, ensure_ascii=False, indent=2)
 
 
+def update_status_label():
+    """タスク件数と完了数をラベルに表示する"""
+    total = len(tasks)
+    done_count = sum(1 for t in tasks if t.get("done", False))
+    status_label.config(text=f"タスク：{total}件（完了 {done_count}件）")
+
+
 # 読み込み関数
 def load_tasks_from_file():
     if not os.path.exists("tasks.json"):
@@ -83,7 +98,10 @@ def load_tasks_from_file():
     # 画面(Listbox)にも反映
     task_listbox.delete(0, tk.END)
     for task in tasks:
-        task_listbox.insert(tk.END, task["title"])
+        if "done" not in task:
+            task["done"] = False
+        task_listbox.insert(tk.END, get_display_title(task))
+    update_status_label()
 
 
 # 更新用関数
@@ -142,6 +160,30 @@ def delete_task():
     title_entry.delete(0, tk.END)
     due_entry.delete(0, tk.END)
     memo_text.delete("1.0", tk.END)
+    save_tasks_to_file()
+    update_status_label()
+
+
+def toggle_done():
+    """選択中タスクの完了/未完了を切り替える"""
+    selection = task_listbox.curselection()
+    if not selection:
+        print("完了状態を切り替えるタスクを選んでください。")
+        return
+
+    index = selection[0]
+    task = tasks[index]
+
+    # 真偽値をひっくり返す
+    task["done"] = not task.get("done", False)
+
+    # Listbox の表示も更新
+    task_listbox.delete(index)
+    task_listbox.insert(index, get_display_title(task))
+    task_listbox.selection_set(index)  # 選択状態キープ
+
+    save_tasks_to_file()
+    update_status_label()
 
 
 # =========================
@@ -205,17 +247,23 @@ memo_text.pack(fill="both", expand=True)
 button_frame = tk.Frame(right_frame, pady=10)
 button_frame.pack(fill="x")
 
+status_label = tk.Label(right_frame, text="タスク:0件（完了 0件）")
+status_label.pack(anchor="w", pady=(0, 5))
+
 add_button = tk.Button(button_frame, text="追加", width=10)
 update_button = tk.Button(button_frame, text="更新", width=10)
 delete_button = tk.Button(button_frame, text="削除", width=10)
+toggle_button = tk.Button(button_frame, text="完了切替", width=10)
 
 add_button.pack(side="left", padx=5)
 update_button.pack(side="left", padx=5)
 delete_button.pack(side="left", padx=5)
+toggle_button.pack(side="left", padx=5)
 
 add_button.config(command=add_task)
 update_button.config(command=update_task)
 delete_button.config(command=delete_task)
+toggle_button.config(command=toggle_done)
 
 load_tasks_from_file()
 # メインループ
