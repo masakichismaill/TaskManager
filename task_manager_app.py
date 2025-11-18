@@ -43,6 +43,38 @@ def get_due_datetime(task):
         return datetime.max
 
 
+def get_task_color(task):
+    """
+    このタスクを Listbox に表示するときの文字色を決める。
+    戻り値は "red" などの色名（文字列）。
+    """
+    done = task.get("done", False)
+
+    # 1. 完了タスクは一律グレー
+    if done:
+        return "gray"
+
+    # 2. 未完了タスクの場合は、期日を見て判断
+    due_dt = get_due_datetime(task)  # datetime または datetime.max が返る
+    if due_dt is datetime.max:
+        # 期日なし、または変な書式 → 通常の黒
+        return "black"
+
+    today = datetime.today().date()
+    due_date = due_dt.date()
+
+    # 3. 今日より前 → 期限切れ（赤）
+    if due_date < today:
+        return "red"
+
+    # 4. 今日ちょうど → 今日中の締切（オレンジ）
+    if due_date == today:
+        return "orange"
+
+    # 5. 未来の日付 → まだ余裕（黒）
+    return "blue"
+
+
 def refresh_task_list():
     """current_filter と current_sort に応じて Listbox を描き直す"""
     global display_indices
@@ -67,8 +99,15 @@ def refresh_task_list():
         filtered_indices.sort(key=lambda idx: get_due_datetime(tasks[idx]))
 
     # 並び替え結果をもとに Listbox と display_indices を作る
-    for idx in filtered_indices:
-        task_listbox.insert(tk.END, get_display_title(tasks[idx]))
+    for row, idx in enumerate(filtered_indices):
+        task = tasks[idx]
+        display_text = get_display_title(task)
+        task_listbox.insert(tk.END, display_text)
+
+        # ★ここで色を決めて反映
+        color = get_task_color(task)
+        task_listbox.itemconfig(row, fg=color)
+
         display_indices.append(idx)
 
 
