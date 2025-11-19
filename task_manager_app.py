@@ -294,6 +294,30 @@ def toggle_done():
     refresh_task_list()
 
 
+def search_tasks():
+    query = search_entry.get().strip()
+    if not query:  # 空なら全件表示
+        refresh_task_list()
+        return
+    task_listbox.delete(0, tk.END)
+    display_indices.clear()
+
+    for i, task in enumerate(tasks):
+        title = task["title"]
+        memo = task["memo"]
+        # ---検索条件---
+        if (query in title) or (query in memo):
+            list_index = task_listbox.size()
+            task_listbox.insert(tk.END, get_display_title(task))
+            task_listbox.itemconfig(list_index, fg=get_task_color(task))
+            display_indices.append(i)
+
+
+def clear_search():
+    search_entry.delete(0, tk.END)
+    refresh_task_list()
+
+
 # =========================
 # メインウィンドウ
 # =========================
@@ -329,6 +353,21 @@ all_button.pack(side="left", padx=2)
 active_button.pack(side="left", padx=2)
 done_button.pack(side="left", padx=2)
 
+# =========================
+# 　検索エリア
+# =========================
+search_frame = tk.Frame(left_frame)
+search_frame.pack(fill="x", pady=(0, 5))
+
+search_entry = tk.Entry(search_frame, width=18)
+search_entry.pack(side="left", padx=(0, 5))
+
+search_button = tk.Button(search_frame, text="検索", width=6)
+search_button.pack(side="left", padx=(0, 2))
+
+clear_button = tk.Button(search_frame, text="クリア", width=6)
+clear_button.pack(side="left")
+
 # ソートボタン
 sort_button = tk.Button(
     left_frame,
@@ -354,6 +393,7 @@ scrollbar.pack(side="right", fill="y")
 
 task_listbox.config(yscrollcommand=scrollbar.set)
 scrollbar.config(command=task_listbox.yview)
+
 
 # =========================
 # 右側：タスク編集エリア
@@ -399,6 +439,9 @@ add_button.config(command=add_task)
 update_button.config(command=update_task)
 delete_button.config(command=delete_task)
 toggle_button.config(command=toggle_done)
+search_button.config(command=search_tasks)
+search_entry.bind("<Return>", lambda event: search_tasks())
+clear_button.config(command=clear_search)
 
 # 起動時にロード
 load_tasks_from_file()
