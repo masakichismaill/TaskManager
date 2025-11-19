@@ -16,9 +16,10 @@ current_filter = FILTER_ALL
 
 # ソート種別
 SORT_NONE = "none"
-SORT_DUE_ASC = "due_asc"
+SORT_DUE_ASC = "due_asc"  # 期日が近い順
 
 current_sort = SORT_NONE
+
 # 「Listboxの何行目か」→「tasksの何番目か」を対応させるためのリスト
 display_indices = []
 
@@ -55,8 +56,8 @@ def get_task_color(task):
         return "gray"
 
     # 2. 未完了タスクの場合は、期日を見て判断
-    due_dt = get_due_datetime(task)  # datetime または datetime.max が返る
-    if due_dt is datetime.max:
+    due_dt = get_due_datetime(task)
+    if due_dt == datetime.max:
         # 期日なし、または変な書式 → 通常の黒
         return "black"
 
@@ -65,13 +66,13 @@ def get_task_color(task):
 
     # 3. 今日より前 → 期限切れ（赤）
     if due_date < today:
-        return "red"
+        return "dim gray"
 
     # 4. 今日ちょうど → 今日中の締切（オレンジ）
     if due_date == today:
-        return "orange"
+        return "red"
 
-    # 5. 未来の日付 → まだ余裕（黒）
+    # 5. 未来の日付 → まだ余裕（青）
     return "blue"
 
 
@@ -87,6 +88,7 @@ def refresh_task_list():
     for i, task in enumerate(tasks):
         done = task.get("done", False)
 
+        # フィルタ処理
         if current_filter == FILTER_ACTIVE and done:
             continue
         if current_filter == FILTER_DONE and not done:
@@ -94,7 +96,7 @@ def refresh_task_list():
 
         filtered_indices.append(i)
 
-    # ソートモードに応じて並び替え
+    # ソートモードに応じて並び替え（今は「期日が近い順」のみ）
     if current_sort == SORT_DUE_ASC:
         filtered_indices.sort(key=lambda idx: get_due_datetime(tasks[idx]))
 
@@ -104,7 +106,7 @@ def refresh_task_list():
         display_text = get_display_title(task)
         task_listbox.insert(tk.END, display_text)
 
-        # ★ここで色を決めて反映
+        # ここで色も決めて反映
         color = get_task_color(task)
         task_listbox.itemconfig(row, fg=color)
 
@@ -146,7 +148,6 @@ def add_task():
         "done": False,  # 新規は未完了
     }
 
-    # 内部のリストに追加
     tasks.append(task)
 
     # 入力欄をクリア
@@ -262,15 +263,12 @@ def delete_task():
         return
     real_index = display_indices[list_index]
 
-    # 内部データから削除
     tasks.pop(real_index)
 
-    # ファイルに保存＆表示/統計更新
     save_tasks_to_file()
     update_status_label()
     refresh_task_list()
 
-    # 右側の入力欄をクリア
     title_entry.delete(0, tk.END)
     due_entry.delete(0, tk.END)
     memo_text.delete("1.0", tk.END)
@@ -331,6 +329,7 @@ all_button.pack(side="left", padx=2)
 active_button.pack(side="left", padx=2)
 done_button.pack(side="left", padx=2)
 
+# ソートボタン
 sort_button = tk.Button(
     left_frame,
     text="期日が近い順",
@@ -345,6 +344,7 @@ sort_clear_button = tk.Button(
 )
 sort_button.pack(anchor="w", pady=(0, 2))
 sort_clear_button.pack(anchor="w", pady=(0, 8))
+
 task_listbox = tk.Listbox(left_frame, width=30, height=20)
 task_listbox.bind("<<ListboxSelect>>", on_select)
 task_listbox.pack(side="left", fill="y")
@@ -352,7 +352,6 @@ task_listbox.pack(side="left", fill="y")
 scrollbar = tk.Scrollbar(left_frame, orient="vertical")
 scrollbar.pack(side="right", fill="y")
 
-# Listbox と スクロールバーを連動
 task_listbox.config(yscrollcommand=scrollbar.set)
 scrollbar.config(command=task_listbox.yview)
 
@@ -362,30 +361,24 @@ scrollbar.config(command=task_listbox.yview)
 right_frame = tk.Frame(root, padx=10, pady=10)
 right_frame.pack(side="right", fill="both", expand=True)
 
-# タイトル
 title_label = tk.Label(right_frame, text="タイトル", font=("メイリオ", 11, "bold"))
 title_label.pack(anchor="w")
 
 title_entry = tk.Entry(right_frame)
 title_entry.pack(fill="x")
 
-# 期日（締切）
 due_label = tk.Label(right_frame, text="期日（任意）", font=("メイリオ", 10))
 due_label.pack(anchor="w", pady=(10, 0))
 
 due_entry = tk.Entry(right_frame)
 due_entry.pack(fill="x")
 
-# メモ
 memo_label = tk.Label(right_frame, text="メモ", font=("メイリオ", 10))
 memo_label.pack(anchor="w", pady=(10, 0))
 
 memo_text = tk.Text(right_frame, wrap="word")
 memo_text.pack(fill="both", expand=True)
 
-# =========================
-# ボタンエリア
-# =========================
 button_frame = tk.Frame(right_frame, pady=10)
 button_frame.pack(fill="x")
 
@@ -410,5 +403,4 @@ toggle_button.config(command=toggle_done)
 # 起動時にロード
 load_tasks_from_file()
 
-# メインループ
 root.mainloop()
