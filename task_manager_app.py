@@ -3,9 +3,12 @@ import json
 import os
 from datetime import datetime
 
+from tkcalendar import DateEntry
+
 # タスクを保存する箱。各タスクは{"title":...,"due":...,"memo":...,"done":...}という辞書で持つ
 tasks = []
-
+# 　カテゴリ候補
+CATEGORIES = ["(未選択)", "仕事", "勉強", "生活", "その他"]
 # フィルタ種別
 FILTER_ALL = "all"  # すべて
 FILTER_ACTIVE = "active"  # 未完了のみ
@@ -25,10 +28,22 @@ display_indices = []
 
 
 def get_display_title(task: dict) -> str:
-    """Listboxに表示するためのタイトル文字列を作る"""
-    done = task.get("done", False)  # "done" がなければ False 扱い
+    """
+    Listbox に表示する１行分の文字列を作る。
+    例：
+      [ ] [仕事] レポートを書く
+      [✔] [勉強] Pythonの復習
+    """
+    done = task.get("done", False)
     mark = "[✔] " if done else "[ ] "
-    return mark + task["title"]
+
+    category = task.get("category", CATEGORIES[0])  # なければ"(未選択)"
+
+    # カテゴリが未選択ならタイトルだけ、選ばれていたら [カテゴリ] をつける
+    if category == CATEGORIES[0]:
+        return mark + task["title"]
+    else:
+        return f"{mark}[{category}] {task['title']}"
 
 
 def get_due_datetime(task):
@@ -87,13 +102,15 @@ def refresh_task_list():
     filtered_indices = []
     for i, task in enumerate(tasks):
         done = task.get("done", False)
-
+        selected_cat = category_filter_var.get()
+        task_cat = task.get("category", CATEGORIES[0])
         # フィルタ処理
         if current_filter == FILTER_ACTIVE and done:
             continue
         if current_filter == FILTER_DONE and not done:
             continue
-
+        if selected_cat != "全てのカテゴリ" and task_cat != selected_cat:
+            continue
         filtered_indices.append(i)
 
     # ソートモードに応じて並び替え（今は「期日が近い順」のみ）
@@ -146,6 +163,7 @@ def add_task():
         "due": due,
         "memo": memo,
         "done": False,  # 新規は未完了
+        "category": category_var.get(),
     }
 
     tasks.append(task)
@@ -185,6 +203,7 @@ def on_select(event):
     title_entry.insert(0, task["title"])
     due_entry.insert(0, task["due"])
     memo_text.insert("1.0", task["memo"])
+    category_var.set(task.get("category", CATEGORIES[0]))
 
 
 def save_tasks_to_file():
@@ -213,7 +232,8 @@ def load_tasks_from_file():
     for task in tasks:
         if "done" not in task:
             task["done"] = False
-
+        if "category" not in task:
+            task["category"] = CATEGORIES[0]
     update_status_label()
     refresh_task_list()
 
@@ -245,6 +265,7 @@ def update_task():
         "due": due,
         "memo": memo,
         "done": old_done,
+        "category": category_var.get(),
     }
 
     save_tasks_to_file()
@@ -353,6 +374,17 @@ all_button.pack(side="left", padx=2)
 active_button.pack(side="left", padx=2)
 done_button.pack(side="left", padx=2)
 
+category_filter_var = tk.StringVar()
+category_filter_var.set("全てのカテゴリ")
+
+category_filter_menu = tk.OptionMenu(
+    left_frame,
+    category_filter_var,
+    "全てのカテゴリ",
+    *CATEGORIES[1:],
+    command=lambda _: refresh_task_list(),
+)
+category_filter_menu.pack(anchor="w", pady=(5, 8))
 # =========================
 # 　検索エリア
 # =========================
@@ -400,19 +432,34 @@ scrollbar.config(command=task_listbox.yview)
 # =========================
 right_frame = tk.Frame(root, padx=10, pady=10)
 right_frame.pack(side="right", fill="both", expand=True)
-
+# カテゴリ選択のための変数
+category_var = tk.StringVar()
+category_var.set(CATEGORIES[0])
 title_label = tk.Label(right_frame, text="タイトル", font=("メイリオ", 11, "bold"))
 title_label.pack(anchor="w")
 
 title_entry = tk.Entry(right_frame)
 title_entry.pack(fill="x")
 
+category_label = tk.Label(right_frame, text="カテゴリー", font=("メイリオ", 10))
+category_label.pack(anchor="w", pady=(10, 0))
+
+category_menu = tk.OptionMenu(right_frame, category_var, *CATEGORIES)
+category_menu.pack(anchor="w")
+
 due_label = tk.Label(right_frame, text="期日（任意）", font=("メイリオ", 10))
 due_label.pack(anchor="w", pady=(10, 0))
 
-due_entry = tk.Entry(right_frame)
+due_entry = DateEntry(
+    right_frame,
+    width=20,
+    date_pattern="yyyy-mm-dd",  # 例: 2025-11-21 という形式で返してくれる
+    firstweekday="sunday",  # （お好みで）週の始まり
+    showweeknumbers=False,  # （お好みで）週番号を非表示
+)
 due_entry.pack(fill="x")
-
+today_str = datetime.today().strftime("%Y-%m-%d")
+due_entry.insert(0, today_str)
 memo_label = tk.Label(right_frame, text="メモ", font=("メイリオ", 10))
 memo_label.pack(anchor="w", pady=(10, 0))
 
